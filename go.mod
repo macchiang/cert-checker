@@ -6,7 +6,7 @@ replace github.com/genkiroid/cert => github.com/mogensen/cert v0.0.0-20210323130
 
 require (
 	github.com/genkiroid/cert v0.0.0-20210323130005-10d4e73883d5
-	github.com/prometheus/client_golang v1.13.0
+	github.com/prometheus/client_golang v1.13.1
 	github.com/sirupsen/logrus v1.9.0
 	github.com/spf13/cobra v1.5.0
 	gopkg.in/yaml.v2 v2.4.0
