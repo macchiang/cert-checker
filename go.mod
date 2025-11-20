@@ -1,8 +1,6 @@
 module github.com/mogensen/cert-checker
 
-go 1.23.0
-
-toolchain go1.23.3
+go 1.24.0
 
 replace github.com/genkiroid/cert => github.com/mogensen/cert v0.0.0-20210323130005-10d4e73883d5
 
@@ -26,7 +24,7 @@ require (
 	github.com/prometheus/common v0.62.0 // indirect
 	github.com/prometheus/procfs v0.15.1 // indirect
 	github.com/spf13/pflag v1.0.6 // indirect
-	golang.org/x/crypto v0.35.0 // indirect
-	golang.org/x/sys v0.30.0 // indirect
+	golang.org/x/crypto v0.45.0 // indirect
+	golang.org/x/sys v0.38.0 // indirect
 	google.golang.org/protobuf v1.36.5 // indirect
 )
