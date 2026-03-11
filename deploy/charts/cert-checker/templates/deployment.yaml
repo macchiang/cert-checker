@@ -46,9 +46,11 @@ spec:
             - name: metrics-http
               containerPort: 8080
               protocol: TCP
+          {{- if gt .Values.certchecker.webport 0.0 }}
             - name: http
               containerPort: 8081
               protocol: TCP
+          {{- end }}
           resources:
             {{- toYaml .Values.resources | nindent 12 }}
 

@@ -1,3 +1,4 @@
+{{- if .Values.service.enabled -}}
 apiVersion: v1
 kind: Service
 metadata:
@@ -5,15 +6,16 @@ metadata:
   labels:
     {{- include "cert-checker.labels" . | nindent 4 }}
 spec:
-  type: {{ .Values.service.type }}
+  type: {{ .Values.service.service.type }}
   ports:
-    - port: {{ .Values.uiService.port }}
+    - port: {{ .Values.service.uiService.port }}
       targetPort: http
       protocol: TCP
       name: http
-    - port: {{ .Values.service.port }}
+    - port: {{ .Values.service.service.port }}
       targetPort: metrics-http
       protocol: TCP
       name: metrics-http
   selector:
     {{- include "cert-checker.selectorLabels" . | nindent 4 }}
+{{- end }}

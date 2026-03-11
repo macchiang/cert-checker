@@ -24,26 +24,27 @@ serviceAccount:
   name: ""
 
 ## Monitoring
-livenessProbe:
-  enabled: true
-  httpGet:
-    path: /
-    port: 8081
-  initialDelaySeconds: 2
-  periodSeconds: 3
+livenessProbe: {}
+  # enabled: true
+  # httpGet:
+  #   path: /
+  #   port: 8081
+  # initialDelaySeconds: 2
+  # periodSeconds: 3
 
-readinessProbe:
-  enabled: true
-  httpGet:
-    path: /
-    port: 8081
-  initialDelaySeconds: 2
-  periodSeconds: 3
+readinessProbe: {}
+  # enabled: true
+  # httpGet:
+  #   path: /
+  #   port: 8081
+  # initialDelaySeconds: 2
+  # periodSeconds: 3
 
 ## Config
 certchecker:
   loglevel: info
   intervalminutes: 1
+  webport: 0 # disable web ui
   certificates:
     - dns: google.com
     - dns: example.com
@@ -58,10 +59,6 @@ certchecker:
     - dns: null.badssl.com
     - dns: rc4-md5.badssl.com
     - dns: rc4.badssl.com
-
-serviceMonitor:
-  enabled: false
-  additionalLabels: {}
 
 grafanaDashboard:
   enabled: false
@@ -81,19 +78,21 @@ securityContext:
   privileged: false
   capabilities:
     drop:
-    - ALL
+      - ALL
   readOnlyRootFilesystem: true
   runAsNonRoot: true
   runAsUser: 35212
   allowPrivilegeEscalation: false
 
 service:
-  type: ClusterIP
-  port: 8080
+  enabled: false
+  service:
+    type: ClusterIP
+    port: 8080
 
-uiService:
-  type: ClusterIP
-  port: 8081
+  uiService:
+    type: ClusterIP
+    port: 8081
 
 ingress:
   enabled: false
@@ -103,10 +102,10 @@ ingress:
   hosts:
     - host: cert-checker.local
       paths:
-      - path: /
-        backend:
-          serviceName: cert-checker.local
-          servicePort: 8081
+        - path: /
+          backend:
+            serviceName: cert-checker.local
+            servicePort: 8081
   tls: []
   #  - secretName: chart-example-tls
   #    hosts:
