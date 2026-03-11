@@ -6,6 +6,7 @@ on:
       - main
     paths:
       - 'deploy/charts/**'
+  workflow_dispatch:
 
 jobs:
   publish:
