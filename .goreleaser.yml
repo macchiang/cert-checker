@@ -1,6 +1,7 @@
+version: 2
+
 env:
   - GO111MODULE=on
-  - GOPROXY=https://gocenter.io
 before:
   hooks:
     - go mod download
@@ -12,13 +13,15 @@ builds:
     - darwin
     - windows
   goarch:
-    - 386
+    - "386"
     - amd64
     - arm
     - arm64
   ignore:
     - goos: darwin
-      goarch: 386
+      goarch: "386"
+    - goos: windows
+      goarch: arm
   mod_timestamp: '{{ .CommitTimestamp }}'
   flags:
     - -trimpath
@@ -39,13 +42,13 @@ changelog:
     - go mod tidy
 
 archives:
-  - name_template: 'cert-checker_{{ .Os }}_{{ .Arch }}{{ if .Arm }}v{{ .Arm }}{{ end }}'
-    replacements:
-      darwin: Darwin
-      linux: Linux
-      windows: Windows
-      386: i386
-      amd64: x86_64
+  - name_template: >-
+      cert-checker_
+      {{- title .Os }}_
+      {{- if eq .Arch "amd64" }}x86_64
+      {{- else if eq .Arch "386" }}i386
+      {{- else }}{{ .Arch }}{{ end }}
+      {{- if .Arm }}v{{ .Arm }}{{ end }}
     format_overrides:
     - goos: windows
-      format: zip
+      formats: [zip]

@@ -9,6 +9,8 @@ jobs:
   release:
     runs-on: ubuntu-latest
     name: goreleaser
+    permissions:
+      contents: write
     steps:
       - name: Checkout
         uses: actions/checkout@v2
@@ -21,8 +23,8 @@ jobs:
       - name: Download dependencies
         run: go mod download
       - name: Release via goreleaser
-        uses: goreleaser/goreleaser-action@v2
+        uses: goreleaser/goreleaser-action@v6
         with:
-          args: release --rm-dist
+          args: release --clean
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
