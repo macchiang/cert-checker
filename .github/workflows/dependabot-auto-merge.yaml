@@ -1,0 +1,102 @@
+name: Dependabot auto-merge
+
+on:
+  workflow_run:
+    workflows: ["Build and Test"]
+    types: [completed]
+
+permissions:
+  contents: write
+  pull-requests: write
+  actions: write
+
+jobs:
+  merge:
+    if: >
+      github.event.workflow_run.conclusion == 'success' &&
+      github.event.workflow_run.event == 'pull_request'
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Approve, merge, bump when the Dependabot queue is empty
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          HEAD: ${{ github.event.workflow_run.head_branch }}
+          PR_FROM_EVENT: ${{ github.event.workflow_run.pull_requests[0].number }}
+        run: |
+          set -euo pipefail
+
+          bump_patch() {
+            local prefix= ver=$1
+            case $ver in v*) prefix=v; ver=${ver#v};; esac
+            local major minor patch
+            IFS=. read -r major minor patch <<< "$ver"
+            echo "${prefix}${major}.${minor}.$((patch + 1))"
+          }
+
+          PR="$PR_FROM_EVENT"
+          if [ -z "$PR" ]; then
+            PR=$(gh pr list --state open --json number,headRefName \
+              --jq --arg h "$HEAD" '.[] | select(.headRefName == $h) | .number')
+          fi
+          [ -n "$PR" ] || exit 0
+
+          AUTHOR=$(gh pr view "$PR" --json author --jq .author.login)
+          BRANCH=$(gh pr view "$PR" --json headRefName --jq .headRefName)
+
+          if [ "$AUTHOR" = "dependabot[bot]" ]; then
+            gh pr review "$PR" --approve
+            gh pr merge "$PR" --squash --delete-branch || echo "merge failed for #$PR (likely go.mod conflict)"
+
+            gh pr list --author app/dependabot --state open --json number --jq '.[].number' \
+              | while read -r n; do
+                  [ -n "$n" ] || continue
+                  gh pr comment "$n" --body "@dependabot recreate"
+                done
+
+            leftover=$(gh pr list --author app/dependabot --state open --json number --jq 'length')
+            [ "$leftover" = "0" ] || exit 0
+
+            git fetch origin main --tags
+            git checkout -B bump/versions origin/main
+
+            chart=$(grep '^version:' deploy/charts/cert-checker/Chart.yaml | awk '{print $2}')
+            latest_tag=$(git tag -l 'v[0-9]*.[0-9]*.[0-9]*' --sort=v:refname | tail -1)
+            latest_tag=${latest_tag:-v0.0.0}
+            new_app=$(bump_patch "$latest_tag")
+            new_chart=$(bump_patch "$chart")
+
+            sed -i -E "s/^version: .*/version: ${new_chart}/" deploy/charts/cert-checker/Chart.yaml
+            sed -i -E "s/^appVersion: .*/appVersion: ${new_app}/" deploy/charts/cert-checker/Chart.yaml
+
+            git config user.name "github-actions[bot]"
+            git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+            git add deploy/charts/cert-checker/Chart.yaml
+            git commit -m "chore: bump ${new_app} and chart ${new_chart}"
+            git push -u origin bump/versions --force
+
+            existing=$(gh pr list --head bump/versions --state open --json number --jq '.[0].number')
+            if [ -z "$existing" ]; then
+              gh pr create --base main --head bump/versions \
+                --title "chore: bump ${new_app} and chart ${new_chart}" \
+                --body "Auto bump after Dependabot queue emptied."
+            fi
+            exit 0
+          fi
+
+          [ "$AUTHOR" = "github-actions[bot]" ] && [ "$BRANCH" = "bump/versions" ] || exit 0
+
+          gh pr review "$PR" --approve
+          gh pr merge "$PR" --squash --delete-branch
+
+          app=$(gh api "repos/${GITHUB_REPOSITORY}/contents/deploy/charts/cert-checker/Chart.yaml?ref=main" \
+            --jq .content | base64 -d | awk '/^appVersion:/{print $2}')
+          sha=$(gh api "repos/${GITHUB_REPOSITORY}/git/ref/heads/main" --jq .object.sha)
+
+          gh api "repos/${GITHUB_REPOSITORY}/git/refs" -f ref="refs/tags/${app}" -f sha="$sha"
+          gh workflow run "Release with goreleaser" --ref "$app"
+          gh workflow run "Publish Helm Chart" --ref main

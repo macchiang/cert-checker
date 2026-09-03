@@ -5,11 +5,13 @@
 
 version: 2
 updates:
-  - package-ecosystem: "gomod" # See documentation for possible values
-    directory: "/" # Location of package manifests
+  - package-ecosystem: "gomod"
+    directory: "/"
     schedule:
       interval: "weekly"
-  - package-ecosystem: "docker" # See documentation for possible values
-    directory: "/" # Location of package manifests
+    rebase-strategy: auto
+  - package-ecosystem: "docker"
+    directory: "/"
     schedule:
       interval: "weekly"
+    rebase-strategy: auto

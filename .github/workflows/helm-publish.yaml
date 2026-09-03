@@ -1,18 +1,18 @@
-name: Publish Helm Chart (OCI)
+name: Publish Helm Chart
 
 on:
   push:
     branches:
       - main
     paths:
-      - 'deploy/charts/**'
+      - 'deploy/charts/cert-checker/Chart.yaml'
   workflow_dispatch:
 
 jobs:
   publish:
     runs-on: ubuntu-latest
     permissions:
-      contents: read
+      contents: write
       packages: write
 
     steps:
@@ -29,21 +29,47 @@ jobs:
         run: |
           VERSION=$(grep '^version:' deploy/charts/cert-checker/Chart.yaml | awk '{print $2}')
           echo "version=${VERSION}" >> "$GITHUB_OUTPUT"
+          echo "tag=cert-checker-helm-chart-${VERSION}" >> "$GITHUB_OUTPUT"
+
+      - name: Skip if this version is already released
+        id: skip
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          if gh release view "${{ steps.chart.outputs.tag }}" >/dev/null 2>&1; then
+            echo "already=true" >> "$GITHUB_OUTPUT"
+            echo "Release ${{ steps.chart.outputs.tag }} already exists"
+          else
+            echo "already=false" >> "$GITHUB_OUTPUT"
+          fi
 
       - name: Login to GitHub Container Registry
+        if: steps.skip.outputs.already != 'true'
         run: |
           echo "${{ secrets.GITHUB_TOKEN }}" | helm registry login ghcr.io \
             --username ${{ github.actor }} \
             --password-stdin
 
       - name: Package Helm chart
+        if: steps.skip.outputs.already != 'true'
         run: helm package deploy/charts/cert-checker --destination /tmp/helm-charts
 
       - name: Push Helm chart to GHCR
+        if: steps.skip.outputs.already != 'true'
         run: |
           helm push /tmp/helm-charts/cert-checker-${{ steps.chart.outputs.version }}.tgz \
             oci://ghcr.io/${{ github.repository_owner }}
 
+      - name: Create GitHub Release
+        if: steps.skip.outputs.already != 'true'
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          gh release create "${{ steps.chart.outputs.tag }}" \
+            "/tmp/helm-charts/cert-checker-${{ steps.chart.outputs.version }}.tgz" \
+            --title "${{ steps.chart.outputs.tag }}" \
+            --notes "$(grep '^description:' deploy/charts/cert-checker/Chart.yaml | sed 's/^description: //')"
+
       - name: Logout from registry
-        if: always()
+        if: always() && steps.skip.outputs.already != 'true'
         run: helm registry logout ghcr.io
