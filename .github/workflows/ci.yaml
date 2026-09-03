@@ -3,10 +3,10 @@ name: Build and Test
 on:
   push:
     branches:
-      - 'main'
+      - "main"
   pull_request:
     branches:
-      - '*'
+      - "*"
 
 jobs:
   build:
@@ -16,24 +16,19 @@ jobs:
     runs-on: ${{ matrix.os }}
     name: Build & Test
     steps:
-      -
-        name: Checkout
+      - name: Checkout
         uses: actions/checkout@v2
-      -
-        name: Setup go
+      - name: Setup go
         uses: actions/setup-go@v2
         with:
-          go-version: '1.25'
-      -
-        name: Download dependencies
+          go-version: "1.26"
+      - name: Download dependencies
         run: go mod download
-      -
-        name: Build & Test
+      - name: Build & Test
         run: |
           go build -o ./cert-checker -v ./cmd/
           go test ./...
-      -
-        name: Run GoReleaser
+      - name: Run GoReleaser
         uses: goreleaser/goreleaser-action@v6
         with:
           args: release --snapshot --skip=publish --clean
